@@ -54,7 +54,7 @@ Navigate to http://localhost:5001 in your browser.
 ## 🔎 Understanding the Graph
 The visual graphs use nodes and arrows to represent WAF rule logic via labels. Here's how to read them:
 
-<img width="1492" alt="image" src="https://github.com/user-attachments/assets/791e8723-0a1f-439e-bf20-4b3c1b1a089f" />
+![image](https://github.com/user-attachments/assets/c3ea8900-c11d-40e3-8104-034ac144d817)
 
 <img width="1020" alt="image" src="https://github.com/user-attachments/assets/6245b188-06af-4b94-84ca-a1a9028d7a20" />
 
