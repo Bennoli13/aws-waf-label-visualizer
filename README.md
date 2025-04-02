@@ -31,7 +31,7 @@ To avoid polluting your Python environment, run this project inside Docker.
 #### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourname/aws-waf-mapper.git
+git clone https://github.com/Bennoli13/aws-waf-label-visualizer.git
 cd aws-waf-mapper
 ```
 
