@@ -1,0 +1,11 @@
+#gitignore all files in the uploads directory
+/uploads/*
+
+#gitignore environment variables
+/.env
+.env
+*/.env
+
+#gitignore all __pycache__ directories
+__pycache__/
+

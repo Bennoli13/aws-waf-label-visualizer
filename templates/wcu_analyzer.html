@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block title %}WCU Analyzer{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">🧮 WAF WCU Analyzer</h1>
+
+<form method="post">
+    <div class="mb-3">
+        <label for="input_text" class="form-label">Paste your AWS WAF JSON or YAML config:</label>
+        <textarea name="input_text" id="input_text" class="form-control" rows="15" required>{{ user_input }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Input Format:</label>
+        <select name="format" class="form-select" style="max-width: 200px;">
+            <option value="json" {% if format_selected == "json" %}selected{% endif %}>JSON</option>
+            <option value="yaml" {% if format_selected == "yaml" %}selected{% endif %}>YAML</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Analyze</button>
+</form>
+
+{% if static_result or static_error %}
+<hr>
+<h3>🔢 Static WCU Estimation</h3>
+{% if static_result %}
+    <div class="card card-body bg-light">
+        <strong>Estimated WCU:</strong> {{ static_result["WCU"] }}<br>
+        <small class="text-muted">{{ static_result["details"] }}</small>
+    </div>
+{% else %}
+    <div class="alert alert-warning mt-3">
+        Static analysis failed: {{ static_error }}
+    </div>
+{% endif %}
+{% endif %}
+
+{% if ai_result %}
+<hr>
+<h3>🤖 AI Analysis (Preview)</h3>
+<div class="card card-body bg-white border">
+    {{ ai_result["summary"] }}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,5 +1,14 @@
 import json
 import re
+import os
+
+# Load AWS-managed rules label mapping
+managed_label_map_path = os.path.join("aws-managedrules-labels.json")
+if os.path.exists(managed_label_map_path):
+    with open(managed_label_map_path) as f:
+        MANAGED_LABEL = json.load(f)
+else:
+    MANAGED_LABEL = {}
 
 def get_children(label, items):
     return [item for item in items if item != label and item.startswith(label + ":")]
@@ -62,30 +71,56 @@ def find_label_relationships(rules):
 
     for rule in rules:
         name = rule["Name"]
+
+        # 1. RuleLabels (manual labels)
         for label in rule.get("RuleLabels", []):
             label_name = label["Name"]
             label_producers.setdefault(label_name, []).append(name)
 
-        def search_labels(statement):
-            if isinstance(statement, dict):
-                if "LabelMatchStatement" in statement:
-                    key = statement["LabelMatchStatement"]["Key"]
+        # 2. ManagedRuleGroup labels
+        statement = rule.get("Statement", {})
+        managed = statement.get("ManagedRuleGroupStatement")
+        if managed:
+            vendor = managed.get("VendorName", "").lower()
+            group = managed.get("Name")
+            overrides = managed.get("RuleActionOverrides")
+
+            if overrides is not None:
+                for override in overrides:
+                    rule_name = override.get("Name")
+                    if rule_name:
+                        label = f"awswaf:managed:{vendor}:*:{rule_name}"
+                        label_producers.setdefault(label, []).append(name)
+            else:
+                # No overrides — check static label map
+                managed_labels = MANAGED_LABEL.get(group)
+                if managed_labels:
+                    for rule_name in managed_labels:
+                        label = f"awswaf:managed:{vendor}:*:{rule_name}"
+                        label_producers.setdefault(label, []).append(name)
+
+        # 3. Consumers via LabelMatchStatement
+        def search_labels(stmt):
+            if isinstance(stmt, dict):
+                if "LabelMatchStatement" in stmt:
+                    key = stmt["LabelMatchStatement"]["Key"]
                     label_consumers.setdefault(key, []).append(name)
-                for v in statement.values():
+                for v in stmt.values():
                     search_labels(v)
-            elif isinstance(statement, list):
-                for item in statement:
+            elif isinstance(stmt, list):
+                for item in stmt:
                     search_labels(item)
 
-        search_labels(rule.get("Statement", {}))
+        search_labels(statement)
 
     return label_producers, label_consumers
+
 
 def build_relationship(rule_name, rules, producers, consumers, visited=None):
     if visited is None:
         visited = set()
     if rule_name in visited:
-        return {}  # Prevent infinite loops
+        return {}
     visited.add(rule_name)
 
     result = {
@@ -94,59 +129,78 @@ def build_relationship(rule_name, rules, producers, consumers, visited=None):
         "action": None
     }
 
-    # Get the rule definition
     rule_def = next((r for r in rules if r["Name"] == rule_name), None)
     if not rule_def:
         return result
 
-    # Extract rule's action (as a string, e.g., "Block", "Count")
-    action_key = list(rule_def.get("Action", {}).keys())[0] if "Action" in rule_def and rule_def.get("Action") else None
+    action_key = list(rule_def.get("Action", {}).keys())[0] if rule_def.get("Action") else None
     result["action"] = action_key
 
-    # Gather produced labels
+    # Start with explicit RuleLabels
     produces = [lbl["Name"] for lbl in rule_def.get("RuleLabels", [])]
+
+    # Add simulated labels from managed rules
+    statement = rule_def.get("Statement", {})
+    managed = statement.get("ManagedRuleGroupStatement")
+    if managed:
+        vendor = managed.get("VendorName", "").lower()
+        group = managed.get("Name", "")
+
+        # Add overrides if present
+        overrides = managed.get("RuleActionOverrides", [])
+        if overrides:
+            for override in overrides:
+                rule = override.get("Name")
+                if vendor and rule:
+                    simulated_label = f"awswaf:managed:{vendor}:*:{rule}"
+                    produces.append(simulated_label)
+        else:
+            rule_names = MANAGED_LABEL.get(group, [])
+            for rule in rule_names:
+                simulated_label = f"awswaf:managed:{vendor}:*:{rule}"
+                produces.append(simulated_label)
+ 
+    # Collect consumed labels
     consumes = []
 
-    def collect_consumes(statement):
-        if not isinstance(statement, dict):
-            return
-        if "LabelMatchStatement" in statement:
-            key = statement["LabelMatchStatement"]["Key"]
-            consumes.append(key)
-        for v in statement.values():
-            if isinstance(v, dict):
+    def collect_consumes(stmt):
+        if isinstance(stmt, dict):
+            if "LabelMatchStatement" in stmt:
+                key = stmt["LabelMatchStatement"]["Key"]
+                consumes.append(key)
+            for v in stmt.values():
                 collect_consumes(v)
-            elif isinstance(v, list):
-                for item in v:
-                    collect_consumes(item)
+        elif isinstance(stmt, list):
+            for item in stmt:
+                collect_consumes(item)
 
-    collect_consumes(rule_def.get("Statement", {}))
+    collect_consumes(statement)
 
-    # Build produce relationship
+    # Build produce relationships
     for label in produces:
         result["produce"][label] = []
         for lbl_key, rel_rules in consumers.items():
-            if label.startswith(lbl_key):  # prefix match
+            if lbl_key.split(":")[-1] == label.split(":")[-1]:
                 for rel_rule in rel_rules:
                     sub_map = build_relationship(rel_rule, rules, producers, consumers, visited.copy())
                     result["produce"][label].append({rel_rule: sub_map})
 
-    # Build consume relationship with action
+    # Build consume relationships
     for label in consumes:
         result["consume"][label] = []
         for lbl_key, rel_rules in producers.items():
-            if lbl_key.startswith(label):  # prefix match
+            if lbl_key.split(":")[-1] == label.split(":")[-1]:
                 for rel_rule in rel_rules:
                     sub_map = build_relationship(rel_rule, rules, producers, consumers, visited.copy())
-                    # Fetch rel_rule's action
                     rel_rule_def = next((r for r in rules if r["Name"] == rel_rule), {})
-                    rel_action = list(rel_rule_def.get("Action", {}).keys())[0] if "Action" in rel_rule_def and rel_rule_def.get("Action") else None
+                    rel_action = list(rel_rule_def.get("Action", {}).keys())[0] if rel_rule_def.get("Action") else None
                     result["consume"][label].append({
                         rel_rule: sub_map,
                         "action": rel_action
                     })
 
     return result
+
 
 def generate_mermaid_from_relationship(relationship, root_rule_name=None):
     mermaid = ["graph TD"]

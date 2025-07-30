@@ -1,10 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Mermaid Graph – Rule: {{ rule_name }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+{% extends "layout.html" %}
+{% block extra_head %}
     <!-- Mermaid -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10.4.0/dist/mermaid.min.js"></script>
     <script>
@@ -16,56 +11,49 @@
 
     <!-- SVG Pan Zoom -->
     <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
-
     <style>
-        html, body {
-            margin: 0;
-            height: 100%;
-            overflow: hidden;
-        }
-
-        .container-fluid {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            padding: 10px 20px;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #ddd;
-            font-size: 1.5rem;
-            font-family: monospace;
-        }
-
-        #graph-container {
-            flex-grow: 1;
-            overflow: auto;
-        }
-        #graph-container svg {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: unset !important;
-            max-height: unset !important;
-        }
-
         .mermaid {
             width: 100%;
             height: 100%;
         }
+        svg[id^="mermaid-"] {
+            height: 600px !important;
+            max-height: 1000px;
+        }
+        #statement-popup::-webkit-scrollbar {
+            width: 6px;
+        }
+        #statement-popup::-webkit-scrollbar-thumb {
+            background-color: #aaa;
+            border-radius: 3px;
+        }
     </style>
-</head>
-<body>
+    
+
+{% endblock %}
+{% block content %}
     <div class="container-fluid">
-        <div class="header">
-            Mermaid Graph – Rule: <code>{{ rule_name }}</code>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4 class="mb-0">Mermaid Graph – Rule: <code>{{ rule_name }}</code></h4>
+            <button id="show-statement" class="btn btn-outline-info btn-sm">View Rule Statement</button>
         </div>
         <div id="graph-container">
             <div class="mermaid">
-{{ graph }}
+    {{ graph }}
+            </div>
+        </div>
+
+        <!-- Floating Rule Statement Box -->
+        <div id="statement-popup" class="card shadow-lg" style="display:none; position:fixed; top:80px; left:80px; z-index:9999; max-width: 600px; max-height: 400px; overflow: auto; cursor: move;">
+            <div class="card-header bg-dark text-white p-2">
+                Rule Statement
+            </div>
+            <div class="card-body p-2 bg-light">
+                <pre style="white-space: pre-wrap;">{{ rule_statement | tojson(indent=2) }}</pre>
             </div>
         </div>
     </div>
+
 
     <script>
         // Wait until SVG is rendered
@@ -86,5 +74,66 @@
             }, 200); // Retry every 200ms until Mermaid finishes rendering
         });
     </script>
-</body>
-</html>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Zoom & pan for mermaid
+            const interval = setInterval(() => {
+                const svg = document.querySelector("svg");
+                if (svg) {
+                    svgPanZoom(svg, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: true,
+                        fit: true,
+                        center: true,
+                        minZoom: 0.2,
+                        maxZoom: 10
+                    });
+                    clearInterval(interval);
+                }
+            }, 200);
+        
+            // Toggle popup
+            const popup = document.getElementById("statement-popup");
+            const trigger = document.getElementById("show-statement");
+        
+            trigger.addEventListener("click", function (e) {
+                popup.style.display = "block";
+                e.stopPropagation();  // Prevent immediate close
+            });
+        
+            // Close popup on outside click
+            document.addEventListener("click", function () {
+                popup.style.display = "none";
+            });
+        
+            popup.addEventListener("click", function (e) {
+                e.stopPropagation();  // Clicking inside shouldn't close it
+            });
+        
+            // Make popup draggable
+            let isDragging = false, offsetX = 0, offsetY = 0;
+        
+            const header = popup.querySelector(".card-header");
+            header.addEventListener("mousedown", function (e) {
+                isDragging = true;
+                offsetX = e.clientX - popup.offsetLeft;
+                offsetY = e.clientY - popup.offsetTop;
+                popup.style.cursor = "grabbing";
+            });
+        
+            document.addEventListener("mousemove", function (e) {
+                if (isDragging) {
+                    popup.style.left = `${e.clientX - offsetX}px`;
+                    popup.style.top = `${e.clientY - offsetY}px`;
+                }
+            });
+        
+            document.addEventListener("mouseup", function () {
+                isDragging = false;
+                popup.style.cursor = "move";
+            });
+        });
+        </script>
+        
+{% endblock %}
