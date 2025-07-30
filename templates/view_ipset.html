@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block title %}View IPSet - {{ ipset_name }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">IPSet: {{ ipset_name }}</h1>
+
+<div class="row g-4">
+    <!-- Left: IPSet Content -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                IPSet Content
+            </div>
+            <div class="card-body">
+                <pre style="height: 600px; overflow: auto;">{{ ipset_content | tojson(indent=2) }}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Rules using this IPSet -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                Rules Using This IPSet
+            </div>
+            <div class="card-body">
+                {% if rules %}
+                    <ul class="list-group">
+                        {% for rule in rules %}
+                        <li class="list-group-item">
+                            <strong>{{ rule.rule_name }}</strong><br>
+                            <small class="text-muted">WebACL: {{ rule.web_acl }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No rules found using this IPSet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,10 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Vis Graph Viewer - {{ rule_name }}</title>
+{% extends "layout.html" %}
+
+{% block extra_head %}
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         html, body {
             margin: 0;
@@ -18,11 +15,38 @@
             border: 1px solid #ddd;
             background: white;
         }
+        #statement-popup::-webkit-scrollbar {
+            width: 6px;
+        }
+        #statement-popup::-webkit-scrollbar-thumb {
+            background-color: #aaa;
+            border-radius: 3px;
+        }
     </style>
-</head>
-<body>
+{% endblock %}
 
-<div id="network"></div>
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h4 class="mb-0">VIS Graph – Rule: <code>{{ rule_name }}</code></h4>
+        <button id="show-statement" class="btn btn-outline-info btn-sm">View Rule Statement</button>
+    </div>
+    <div id="graph-container">
+        <div id="network"></div>
+    </div>
+
+    <!-- Floating Rule Statement Box -->
+    <div id="statement-popup" class="card shadow-lg" style="display:none; position:fixed; top:80px; left:80px; z-index:9999; max-width: 600px; max-height: 400px; overflow: auto; cursor: move;">
+        <div class="card-header bg-dark text-white p-2">
+            Rule Statement
+        </div>
+        <div class="card-body p-2 bg-light">
+            <pre style="white-space: pre-wrap;">{{ rule_statement | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+</div>
+
+
 
 <script type="text/javascript">
     const nodes = new vis.DataSet({{ nodes | tojson }});
@@ -33,16 +57,12 @@
     const options = {
         layout: {
             improvedLayout: true,
-            hierarchical: {
-                enabled: false
-            }
+            hierarchical: { enabled: false }
         },
         physics: {
             enabled: true,
             solver: "forceAtlas2Based",
-            stabilization: {
-                iterations: 150
-            }
+            stabilization: { iterations: 150 }
         },
         interaction: {
             hover: true,
@@ -51,32 +71,78 @@
             keyboard: true
         },
         edges: {
-            arrows: {
-                to: { enabled: true, scaleFactor: 0.7 }
-            },
-            font: {
-                align: "middle"
-            },
-            smooth: {
-                type: "dynamic"
-            }
+            arrows: { to: { enabled: true, scaleFactor: 0.7 } },
+            font: { align: "middle" },
+            smooth: { type: "dynamic" }
         },
         nodes: {
             shape: "box",
-            color: {
-                background: "#e3f2fd",
-                border: "#2196f3"
-            },
-            font: {
-                color: "#0d47a1",
-                face: "monospace"
-            },
+            color: { background: "#e3f2fd", border: "#2196f3" },
+            font: { color: "#0d47a1", face: "monospace" },
             margin: 10
         }
     };
 
     const network = new vis.Network(container, data, options);
 </script>
-
-</body>
-</html>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Zoom & pan for mermaid
+        const interval = setInterval(() => {
+            const svg = document.querySelector("svg");
+            if (svg) {
+                svgPanZoom(svg, {
+                    zoomEnabled: true,
+                    controlIconsEnabled: true,
+                    fit: true,
+                    center: true,
+                    minZoom: 0.2,
+                    maxZoom: 10
+                });
+                clearInterval(interval);
+            }
+        }, 200);
+    
+        // Toggle popup
+        const popup = document.getElementById("statement-popup");
+        const trigger = document.getElementById("show-statement");
+    
+        trigger.addEventListener("click", function (e) {
+            popup.style.display = "block";
+            e.stopPropagation();  // Prevent immediate close
+        });
+    
+        // Close popup on outside click
+        document.addEventListener("click", function () {
+            popup.style.display = "none";
+        });
+    
+        popup.addEventListener("click", function (e) {
+            e.stopPropagation();  // Clicking inside shouldn't close it
+        });
+    
+        // Make popup draggable
+        let isDragging = false, offsetX = 0, offsetY = 0;
+    
+        const header = popup.querySelector(".card-header");
+        header.addEventListener("mousedown", function (e) {
+            isDragging = true;
+            offsetX = e.clientX - popup.offsetLeft;
+            offsetY = e.clientY - popup.offsetTop;
+            popup.style.cursor = "grabbing";
+        });
+    
+        document.addEventListener("mousemove", function (e) {
+            if (isDragging) {
+                popup.style.left = `${e.clientX - offsetX}px`;
+                popup.style.top = `${e.clientY - offsetY}px`;
+            }
+        });
+    
+        document.addEventListener("mouseup", function () {
+            isDragging = false;
+            popup.style.cursor = "move";
+        });
+    });
+    </script>
+{% endblock %}

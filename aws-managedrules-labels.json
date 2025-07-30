@@ -1,0 +1,52 @@
+{
+    "AWSManagedRulesAmazonIpReputationList": [
+        "AWSManagedIPDDoSList",
+        "AWSManagedReconnaissanceList",
+        "AWSManagedIPReputationList"
+    ],
+    "AWSManagedRulesKnownBadInputsRuleSet": [
+      "Log4JRCE_URIPath",
+      "Log4JRCE_Header",
+      "JavaDeserializationRCE_QueryString",
+      "Log4JRCE_QueryString",
+      "Host_Localhost_Header",
+      "JavaDeserializationRCE_Header",
+      "JavaDeserializationRCE_URIPath",
+      "JavaDeserializationRCE_Body",
+      "Propfind_Method",
+      "ExploitablePaths_URIPath",
+      "Log4JRCE_Body"
+    ],
+    "AWSManagedRulesSQLiRuleSet": [
+      "SQLiExtendedPatterns_QueryArguments",
+      "SQLiExtendedPatterns_Body",
+      "SQLi_Body",
+      "SQLi_Cookie",
+      "SQLi_QueryArguments"
+    ],
+    "AWSManagedRulesCommonRuleSet": [
+      "SizeRestrictions_URIPath",
+      "EC2MetaDataSSRF_URIPath",
+      "CrossSiteScripting_QueryArguments",
+      "CrossSiteScripting_URIPath",
+      "GenericRFI_Body",
+      "GenericLFI_QueryArguments",
+      "CrossSiteScripting_Cookie",
+      "EC2MetaDataSSRF_QueryArguments",
+      "GenericLFI_URIPath",
+      "GenericLFI_Body",
+      "GenericRFI_QueryArguments",
+      "EC2MetaDataSSRF_Cookie",
+      "RestrictedExtensions_URIPath",
+      "NoUserAgent_Header",
+      "CrossSiteScripting_Body",
+      "BadBots_Header",
+      "GenericRFI_URIPath",
+      "SizeRestrictions_Body",
+      "EC2MetaDataSSRF_Body",
+      "RestrictedExtensions_QueryArguments",
+      "SizeRestrictions_QueryString",
+      "SizeRestrictions_Cookie_Header"
+    ]
+  }
+  
